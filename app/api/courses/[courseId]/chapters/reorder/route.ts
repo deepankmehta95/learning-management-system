@@ -2,17 +2,17 @@ import { db } from '@/lib/db'
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 
-export async function POST(
+export async function PUT(
   req: Request,
   { params }: { params: { courseId: string } }
 ) {
   try {
     const { userId } = auth()
     const { courseId } = params
-    const { url } = await req.json()
+    const { list } = await req.json()
 
     if (!userId) {
-      return new NextResponse('Unauthorized', { status: 401 })
+      return new NextResponse('Unauthiorized', { status: 401 })
     }
 
     const courseOwner = await db.course.findUnique({
@@ -20,20 +20,21 @@ export async function POST(
     })
 
     if (!courseOwner) {
-      return new NextResponse('Unauthorized', { status: 401 })
+      return new NextResponse('Unauthiorized', { status: 401 })
     }
 
-    const attachment = await db.attachment.create({
-      data: {
-        url,
-        name: url.split('/').pop(),
-        courseId,
-      },
-    })
+    for (let item of list) {
+      await db.chapter.update({
+        where: { id: item.id },
+        data: {
+          position: item.position,
+        },
+      })
+    }
 
-    return NextResponse.json(attachment)
+    return new NextResponse('Success', { status: 200 })
   } catch (error) {
-    console.log('[ATTACHMENTS]', error)
+    console.log('[REORDER]', error)
     return new NextResponse('Internal Error', { status: 500 })
   }
 }
